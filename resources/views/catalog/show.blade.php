@@ -1,0 +1,86 @@
+@extends('layouts.shop')
+
+@php
+    $breadcrumbs = [
+        ['label' => 'Главная', 'url' => route('catalog.index')],
+        ['label' => 'Каталог', 'url' => route('catalog.index')],
+    ];
+
+    if ($product->category->parent) {
+        $breadcrumbs[] = ['label' => $product->category->parent->name, 'url' => route('catalog.index', ['category' => $product->category->parent->slug])];
+    }
+
+    $breadcrumbs[] = ['label' => $product->category->name, 'url' => route('catalog.index', ['category' => $product->category->slug])];
+    $breadcrumbs[] = ['label' => $product->name];
+@endphp
+
+@section('title', $product->name)
+
+@section('content')
+    @if ($product->brand)
+        <a href="{{ route('catalog.index', ['brand' => $product->brand->slug]) }}"
+           class="inline-block mb-4 px-3 py-1 rounded-full bg-indigo-100 text-indigo-700 text-sm hover:bg-indigo-200 transition">
+            {{ $product->brand->name }}
+        </a>
+    @endif
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div class="bg-white rounded-xl shadow h-96 flex items-center justify-center text-9xl">
+            📦
+        </div>
+
+        <div class="bg-white rounded-xl shadow p-8">
+            <p class="text-sm text-gray-500 mb-2">{{ $product->category->name }}</p>
+            <h1 class="text-3xl font-bold mb-4">{{ $product->name }}</h1>
+            <p class="text-gray-600 mb-6">{{ $product->description }}</p>
+
+            <p class="text-4xl font-bold text-indigo-600 mb-2">{{ $product->priceRub() }}</p>
+            <p class="text-sm mb-6 {{ $product->stock > 0 ? 'text-green-600' : 'text-red-500' }}">
+                @if ($product->stock > 0)
+                    В наличии: {{ $product->stock }} шт.
+                @else
+                    Нет в наличии
+                @endif
+            </p>
+
+            <form action="{{ route('cart.add', $product) }}" method="POST" class="flex items-center gap-4">
+                @csrf
+                <label class="flex items-center gap-2">
+                    Количество:
+                    <input type="number" name="quantity" value="1" min="1" max="{{ max(1, $product->stock) }}"
+                           class="w-20 rounded-lg border-gray-300 border px-3 py-2">
+                </label>
+                <button type="submit" @disabled($product->stock === 0)
+                        class="px-6 py-3 rounded-lg bg-indigo-600 text-white font-medium hover:bg-indigo-700 transition disabled:opacity-50 disabled:cursor-not-allowed">
+                    В корзину
+                </button>
+            </form>
+        </div>
+    </div>
+
+    @if ($related->isNotEmpty())
+        <h2 class="text-2xl font-bold mt-12 mb-6">Похожие товары</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            @foreach ($related as $item)
+                <div class="bg-white rounded-xl shadow hover:shadow-lg transition overflow-hidden flex flex-col">
+                    <a href="{{ route('catalog.show', $item->slug) }}"
+                       class="h-36 bg-gradient-to-br from-indigo-100 to-indigo-200 flex items-center justify-center text-5xl">📦</a>
+                    <div class="p-4 flex flex-col flex-1">
+                        <a href="{{ route('catalog.show', $item->slug) }}" class="font-semibold hover:text-indigo-600">
+                            {{ $item->name }}
+                        </a>
+                        <div class="mt-auto pt-3 flex items-center justify-between">
+                            <span class="font-bold">{{ $item->priceRub() }}</span>
+                            <form action="{{ route('cart.add', $item) }}" method="POST">
+                                @csrf
+                                <button type="submit" class="px-3 py-2 rounded-lg bg-indigo-600 text-white text-sm hover:bg-indigo-700">
+                                    В корзину
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            @endforeach
+        </div>
+    @endif
+@endsection
