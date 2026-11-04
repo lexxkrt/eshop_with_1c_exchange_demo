@@ -10,22 +10,18 @@ return new class extends Migration
     {
         Schema::create('brands', function (Blueprint $table) {
             $table->id();
+            $table->string('uuid', 64)->nullable()->unique()->comment('GUID из 1С');
             $table->string('name');
             $table->string('slug')->unique();
+            $table->string('image')->nullable();
+            $table->boolean('status')->default(true);
+            $table->unsignedInteger('position')->default(0)->comment('Порядок сортировки');
             $table->timestamps();
-        });
-
-        Schema::table('products', function (Blueprint $table) {
-            $table->foreignId('brand_id')->nullable()->after('category_id')->constrained()->nullOnDelete();
         });
     }
 
     public function down(): void
     {
-        Schema::table('products', function (Blueprint $table) {
-            $table->dropConstrainedForeignId('brand_id');
-        });
-
         Schema::dropIfExists('brands');
     }
 };

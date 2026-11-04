@@ -4,40 +4,52 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>@yield('title', 'Интернет-магазин')</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    {{-- Стили подключаются через Vite (@tailwindcss/vite, Tailwind v4).
+        Тёмная тема: variant dark работает по классу .dark на <html> (@custom-variant в resources/css/app.css). --}}
+    @vite(['resources/css/app.css','resources/js/app.js'])
+    {{-- Применяем сохранённую тему до отрисовки страницы, чтобы избежать "мигания" --}}
+    <script>
+        (function () {
+            const theme = localStorage.getItem('theme');
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            if (theme === 'dark' || (!theme && prefersDark)) {
+                document.documentElement.classList.add('dark');
+            }
+        })();
+    </script>
 </head>
-<body class="bg-gray-50 text-gray-800 min-h-screen flex flex-col">
-    <header class="bg-white shadow sticky top-0 z-40">
+<body class="bg-gray-50 text-gray-800 dark:bg-gray-900 dark:text-gray-100 min-h-screen flex flex-col transition-colors">
+    <header class="bg-white shadow dark:bg-gray-800 dark:border-b dark:border-gray-700 sticky top-0 z-40">
         <div class="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between gap-4">
             <div class="flex items-center gap-6">
-                <a href="{{ route('catalog.index') }}" class="text-2xl font-bold text-indigo-600">🛒 Shop</a>
+                <a href="{{ route('catalog.index') }}" class="text-2xl font-bold text-indigo-600 dark:text-indigo-400">🛒 Shop</a>
 
                 {{-- Выпадающее меню категорий --}}
                 <nav class="relative group hidden md:block">
                     <button type="button"
-                            class="flex items-center gap-2 px-4 py-2 rounded-lg bg-indigo-600 text-white font-medium hover:bg-indigo-700 transition">
+                            class="flex items-center gap-2 px-4 py-2 rounded-lg bg-indigo-600 text-white font-medium hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 transition">
                         Каталог
                         <span class="text-xs transition group-hover:rotate-180">▼</span>
                     </button>
 
                     <div class="invisible opacity-0 group-hover:visible group-hover:opacity-100 transition
                                 absolute left-0 top-full pt-2 w-72">
-                        <div class="bg-white rounded-xl shadow-xl border border-gray-100 py-2 max-h-[70vh] overflow-y-auto">
+                        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-100 dark:border-gray-700 py-2 max-h-[70vh] overflow-y-auto">
                             <a href="{{ route('catalog.index') }}"
-                               class="block px-4 py-2 font-semibold hover:bg-indigo-50 hover:text-indigo-600">
+                               class="block px-4 py-2 font-semibold hover:bg-indigo-50 hover:text-indigo-600 dark:hover:bg-gray-700 dark:hover:text-indigo-400">
                                 Все товары
                             </a>
                             @foreach ($menuCategories as $category)
-                                <div class="px-4 py-2 hover:bg-indigo-50">
+                                <div class="px-4 py-2 hover:bg-indigo-50 dark:hover:bg-gray-700">
                                     <a href="{{ route('catalog.index', ['category' => $category->slug]) }}"
-                                       class="block font-semibold hover:text-indigo-600">
+                                       class="block font-semibold hover:text-indigo-600 dark:hover:text-indigo-400">
                                         {{ $category->name }}
                                     </a>
                                     @if ($category->children->isNotEmpty())
                                         <div class="mt-1 space-y-1">
                                             @foreach ($category->children as $child)
                                                 <a href="{{ route('catalog.index', ['category' => $child->slug]) }}"
-                                                   class="block pl-4 text-sm text-gray-500 hover:text-indigo-600">
+                                                   class="block pl-4 text-sm text-gray-500 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400">
                                                     — {{ $child->name }}
                                                 </a>
                                             @endforeach
@@ -52,15 +64,21 @@
 
             <form action="{{ route('catalog.index') }}" method="GET" class="flex-1 max-w-md hidden sm:block">
                 <input type="text" name="search" value="{{ request('search') }}" placeholder="Поиск товаров..."
-                       class="w-full rounded-lg border-gray-300 border px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                       class="w-full rounded-lg bg-white dark:bg-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600 border px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500">
             </form>
 
             <div class="flex items-center gap-3">
+                {{-- Переключатель темы --}}
+                <button type="button" id="theme-toggle" title="Переключить тему"
+                        class="w-10 h-10 flex items-center justify-center rounded-lg border border-gray-200 dark:border-gray-600 text-lg hover:bg-indigo-50 dark:hover:bg-gray-700 transition">
+                    <span class="hidden dark:inline" title="Светлая тема">☀️</span>
+                    <span class="dark:hidden" title="Тёмная тема">🌙</span>
+                </button>
                 <a href="{{ route('brands.index') }}"
-                   class="px-4 py-2 rounded-lg border font-medium hover:bg-indigo-50 hover:text-indigo-600 transition">
+                   class="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 font-medium hover:bg-indigo-50 hover:text-indigo-600 dark:hover:bg-gray-700 dark:hover:text-indigo-400 transition">
                     Бренды
                 </a>
-                <a href="{{ route('cart.index') }}" class="relative px-4 py-2 rounded-lg bg-indigo-600 text-white font-medium hover:bg-indigo-700 transition">
+                <a href="{{ route('cart.index') }}" class="relative px-4 py-2 rounded-lg bg-indigo-600 text-white font-medium hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 transition">
                 Корзина
                 @php $cartCount = app(\App\Services\CartService::class)->count(); @endphp
                 @if ($cartCount > 0)
@@ -79,14 +97,14 @@
 
     @if (session('success'))
         <div class="max-w-7xl mx-auto px-4 mt-4 w-full">
-            <div class="bg-green-100 border border-green-300 text-green-800 px-4 py-3 rounded-lg">
+            <div class="bg-green-100 dark:bg-green-900/40 border border-green-300 dark:border-green-700 text-green-800 dark:text-green-300 px-4 py-3 rounded-lg">
                 {{ session('success') }}
             </div>
         </div>
     @endif
     @if (session('error'))
         <div class="max-w-7xl mx-auto px-4 mt-4 w-full">
-            <div class="bg-red-100 border border-red-300 text-red-800 px-4 py-3 rounded-lg">
+            <div class="bg-red-100 dark:bg-red-900/40 border border-red-300 dark:border-red-700 text-red-800 dark:text-red-300 px-4 py-3 rounded-lg">
                 {{ session('error') }}
             </div>
         </div>
@@ -96,10 +114,17 @@
         @yield('content')
     </main>
 
-    <footer class="bg-white border-t mt-auto">
-        <div class="max-w-7xl mx-auto px-4 py-6 text-center text-gray-500 text-sm">
+    <footer class="bg-white dark:bg-gray-800 border-t dark:border-gray-700 mt-auto">
+        <div class="max-w-7xl mx-auto px-4 py-6 text-center text-gray-500 dark:text-gray-400 text-sm">
             © {{ date('Y') }} Shop — демонстрационный интернет-магазин на Laravel
         </div>
     </footer>
+
+    <script>
+        document.getElementById('theme-toggle')?.addEventListener('click', function () {
+            const isDark = document.documentElement.classList.toggle('dark');
+            localStorage.setItem('theme', isDark ? 'dark' : 'light');
+        });
+    </script>
 </body>
 </html>

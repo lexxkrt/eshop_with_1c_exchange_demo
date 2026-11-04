@@ -25,6 +25,10 @@ class AppServiceProvider extends ServiceProvider
         Model::automaticallyEagerLoadRelationships();
 
         // Дерево категорий для меню в шапке и сайдбара каталога.
-        View::share('menuCategories', Category::root()->with('children')->get());
+        // Composer (а не View::share), чтобы запрос выполнялся лениво — при рендере вида,
+        // а не при загрузке приложения (важно для тестов: сначала миграции, потом запросы).
+        View::composer('*', function ($view) {
+            $view->with('menuCategories', Category::root()->with('children')->get());
+        });
     }
 }

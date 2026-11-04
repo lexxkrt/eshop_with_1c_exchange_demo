@@ -10,12 +10,14 @@ return new class extends Migration
     {
         Schema::create('orders', function (Blueprint $table) {
             $table->id();
+            $table->string('external_id', 64)->nullable()->unique()->after('id')->comment('GUID заказа из 1С');
             $table->string('customer_name');
             $table->string('customer_email');
             $table->string('customer_phone', 30);
             $table->text('address');
             $table->unsignedInteger('total')->comment('Сумма заказа в копейках');
             $table->string('status', 20)->default('new');
+            $table->timestamp('exported_at')->nullable()->after('status')->comment('Дата выгрузки заказа в 1С');
             $table->timestamps();
         });
 

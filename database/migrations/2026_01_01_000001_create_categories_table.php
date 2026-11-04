@@ -10,10 +10,13 @@ return new class extends Migration
     {
         Schema::create('categories', function (Blueprint $table) {
             $table->id();
+            $table->string('uuid', 64)->nullable()->unique()->comment('GUID из 1С');
             $table->string('name');
             $table->string('slug')->unique();
             $table->foreignId('parent_id')->nullable()->constrained('categories')->nullOnDelete();
+            $table->string('image')->nullable();
             $table->unsignedInteger('position')->default(0)->comment('Порядок сортировки');
+            $table->boolean('status')->default(true);
             $table->timestamps();
         });
     }

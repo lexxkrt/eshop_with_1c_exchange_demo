@@ -30,19 +30,19 @@
                 <h2 class="font-bold text-lg mb-3">Категории</h2>
                 <nav class="flex lg:flex-col gap-2 overflow-x-auto pb-2">
                     <a href="{{ request()->only(['brand', 'search']) ? route('catalog.index', request()->only(['brand', 'search'])) : route('catalog.index') }}"
-                       class="px-4 py-2 rounded-lg whitespace-nowrap {{ !request('category') ? 'bg-indigo-600 text-white' : 'bg-white hover:bg-indigo-50' }}">
+                       class="px-4 py-2 rounded-lg whitespace-nowrap {{ !request('category') ? 'bg-indigo-600 text-white' : 'bg-white hover:bg-indigo-50 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-100' }}">
                         Все товары
                     </a>
                     @foreach ($menuCategories as $category)
                         @php $params = ['category' => $category->slug] + request()->only(['brand', 'search']); @endphp
                         <a href="{{ route('catalog.index', $params) }}"
-                           class="px-4 py-2 rounded-lg font-medium whitespace-nowrap {{ request('category') === $category->slug ? 'bg-indigo-600 text-white' : 'bg-white hover:bg-indigo-50' }}">
+                           class="px-4 py-2 rounded-lg font-medium whitespace-nowrap {{ request('category') === $category->slug ? 'bg-indigo-600 text-white' : 'bg-white hover:bg-indigo-50 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-100' }}">
                             {{ $category->name }}
                         </a>
                         @foreach ($category->children as $child)
                             @php $childParams = ['category' => $child->slug] + request()->only(['brand', 'search']); @endphp
                             <a href="{{ route('catalog.index', $childParams) }}"
-                               class="pl-6 pr-4 py-2 rounded-lg text-sm whitespace-nowrap {{ request('category') === $child->slug ? 'bg-indigo-600 text-white' : 'bg-white text-gray-600 hover:bg-indigo-50' }}">
+                               class="pl-6 pr-4 py-2 rounded-lg text-sm whitespace-nowrap {{ request('category') === $child->slug ? 'bg-indigo-600 text-white' : 'bg-white text-gray-600 hover:bg-indigo-50 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700' }}">
                                 — {{ $child->name }}
                             </a>
                         @endforeach
@@ -54,15 +54,15 @@
                 <h2 class="font-bold text-lg mb-3">Бренды</h2>
                 <nav class="flex lg:flex-col gap-2 overflow-x-auto pb-2">
                     <a href="{{ request()->only(['category', 'search']) ? route('catalog.index', request()->only(['category', 'search'])) : route('catalog.index') }}"
-                       class="px-4 py-2 rounded-lg whitespace-nowrap {{ !request('brand') ? 'bg-indigo-600 text-white' : 'bg-white hover:bg-indigo-50' }}">
+                       class="px-4 py-2 rounded-lg whitespace-nowrap {{ !request('brand') ? 'bg-indigo-600 text-white' : 'bg-white hover:bg-indigo-50 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-100' }}">
                         Все бренды
                     </a>
                     @foreach ($brands as $brand)
                         @php $params = ['brand' => $brand->slug] + request()->only(['category', 'search']); @endphp
                         <a href="{{ route('catalog.index', $params) }}"
-                           class="px-4 py-2 rounded-lg flex items-center justify-between whitespace-nowrap {{ request('brand') === $brand->slug ? 'bg-indigo-600 text-white' : 'bg-white hover:bg-indigo-50' }}">
+                           class="px-4 py-2 rounded-lg flex items-center justify-between whitespace-nowrap {{ request('brand') === $brand->slug ? 'bg-indigo-600 text-white' : 'bg-white hover:bg-indigo-50 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-100' }}">
                             <span>{{ $brand->name }}</span>
-                            <span class="text-xs {{ request('brand') === $brand->slug ? 'text-indigo-200' : 'text-gray-400' }}">
+                            <span class="text-xs {{ request('brand') === $brand->slug ? 'text-indigo-200' : 'text-gray-400 dark:text-gray-500' }}">
                                 {{ $brand->products_count }}
                             </span>
                         </a>
@@ -78,7 +78,7 @@
                     @if (request('category'))<input type="hidden" name="category" value="{{ request('category') }}">@endif
                     @if (request('search'))<input type="hidden" name="search" value="{{ request('search') }}">@endif
                     <select name="sort" onchange="this.form.submit()"
-                            class="rounded-lg border-gray-300 border px-3 py-2 text-sm">
+                            class="rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 border px-3 py-2 text-sm">
                         <option value="" @selected(!request('sort'))>По умолчанию</option>
                         <option value="price_asc" @selected(request('sort') === 'price_asc')>Цена: сначала дешёвые</option>
                         <option value="price_desc" @selected(request('sort') === 'price_desc')>Цена: сначала дорогие</option>
@@ -88,19 +88,19 @@
             </div>
 
             @if ($products->isEmpty())
-                <div class="bg-white rounded-xl p-12 text-center text-gray-500">
+                <div class="bg-white dark:bg-gray-800 rounded-xl p-12 text-center text-gray-500 dark:text-gray-400">
                     Товары не найдены. Попробуйте изменить параметры поиска.
                 </div>
             @else
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                     @foreach ($products as $product)
-                        <div class="bg-white rounded-xl shadow hover:shadow-lg transition overflow-hidden flex flex-col">
+                        <div class="bg-white dark:bg-gray-800 rounded-xl shadow hover:shadow-lg transition overflow-hidden flex flex-col">
                             <a href="{{ route('catalog.show', $product->slug) }}"
-                               class="h-44 bg-gradient-to-br from-indigo-100 to-indigo-200 flex items-center justify-center text-6xl">
+                               class="h-44 bg-gradient-to-br from-indigo-100 to-indigo-200 dark:from-indigo-900/40 dark:to-indigo-800/40 flex items-center justify-center text-6xl">
                                 📦
                             </a>
                             <div class="p-4 flex flex-col flex-1">
-                                <p class="text-xs text-gray-500 mb-1">
+                                <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">
                                     {{ $product->brand?->name }} · {{ $product->category->name }}
                                 </p>
                                 <a href="{{ route('catalog.show', $product->slug) }}"

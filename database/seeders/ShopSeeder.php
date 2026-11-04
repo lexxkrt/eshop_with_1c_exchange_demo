@@ -14,10 +14,7 @@ class ShopSeeder extends Seeder
     {
         $brands = collect(['Apple', 'Samsung', 'Google', 'Xiaomi', 'Lenovo', 'ASUS', 'Dell', 'Sony', 'JBL', 'Huawei', 'Honor', 'Anker', 'LG', 'Philips'])
             ->mapWithKeys(fn (string $name) => [
-                $name => Brand::create([
-                    'name' => $name,
-                    'slug' => Str::slug($name),
-                ]),
+                $name => Brand::create(['name' => $name]),
             ]);
 
         /*
@@ -136,14 +133,12 @@ class ShopSeeder extends Seeder
         foreach ($tree as $categoryName => $categoryData) {
             $category = Category::create([
                 'name' => $categoryName,
-                'slug' => Str::slug($categoryName),
                 'position' => $categoryData['position'],
             ]);
 
             foreach ($categoryData['subs'] as $subName => $products) {
                 $sub = Category::create([
                     'name' => $subName,
-                    'slug' => Str::slug($subName),
                     'parent_id' => $category->id,
                     'position' => array_key_first($categoryData['subs']) === $subName ? 1 : 2,
                 ]);
@@ -153,7 +148,7 @@ class ShopSeeder extends Seeder
                         'category_id' => $sub->id,
                         'brand_id' => $brands[$brandName]->id,
                         'name' => $name,
-                        'slug' => Str::slug($name),
+                        'sku' => 'SKU-' . strtoupper(Str::slug($name)),
                         'description' => $description,
                         'price' => $price,
                         'stock' => $stock,

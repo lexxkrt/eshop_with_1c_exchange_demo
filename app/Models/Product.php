@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use App\Casts\MoneyCast;
+use App\Models\Concerns\HasSlug;
+use App\Models\Concerns\HasUuid;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -12,8 +14,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'category_id',
     'brand_id',
     'name',
-    'slug',
-    'external_id',
+    'sku',
     'description',
     'price',
     'stock',
@@ -23,6 +24,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 ])]
 class Product extends Model
 {
+    use HasSlug;
+    use HasUuid;
+
     protected function casts(): array
     {
         return [

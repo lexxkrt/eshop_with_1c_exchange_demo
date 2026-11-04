@@ -85,8 +85,8 @@ class OrdersExporter
         foreach ($order->items as $item) {
             $xml->startElement('Товар');
 
-            if ($item->product?->external_id) {
-                $xml->writeElement('Ид', $item->product->external_id);
+            if ($item->product?->uuid) {
+                $xml->writeElement('Ид', $item->product->uuid);
             } else {
                 $xml->writeElement('Ид', 'order-item-' . $item->id);
             }

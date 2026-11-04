@@ -5,7 +5,6 @@ namespace App\Services\OneC;
 use App\Models\Brand;
 use App\Models\Category;
 use App\Models\Product;
-use Illuminate\Support\Str;
 use SimpleXMLElement;
 
 /**
@@ -55,25 +54,24 @@ class CommerceMLImporter
 
     private function importGroup(SimpleXMLElement $group, ?int $parentId = null): void
     {
-        $externalId = (string) ($group->Ид ?? '');
+        $uuid = (string) ($group->Ид ?? '');
         $name = (string) ($group->Наименование ?? '');
 
-        if ($externalId === '' || $name === '') {
+        if ($uuid === '' || $name === '') {
             return;
         }
 
         Category::updateOrCreate(
-            ['external_id' => $externalId],
+            ['uuid' => $uuid],
             [
                 'name' => $name,
-                'slug' => $this->uniqueSlug($name, Category::class, $externalId),
                 'parent_id' => $parentId,
             ]
         );
 
         $this->categoriesImported++;
 
-        $category = Category::where('external_id', $externalId)->first();
+        $category = Category::where('uuid', $uuid)->first();
 
         foreach ($group->Группы?->Группа ?? [] as $child) {
             $this->importGroup($child, $category->id);
@@ -95,10 +93,10 @@ class CommerceMLImporter
             }
 
             $category = null;
-            $categoryGuid = (string) ($item->Группы?->Ид ?? '');
+            $categoryUuid = (string) ($item->Группы?->Ид ?? '');
 
-            if ($categoryGuid !== '') {
-                $category = Category::where('external_id', $categoryGuid)->first();
+            if ($categoryUuid !== '') {
+                $category = Category::where('uuid', $categoryUuid)->first();
             }
 
             // Бренд из узла Изготовитель (или Изготовитель/Наименование).
@@ -106,10 +104,7 @@ class CommerceMLImporter
             $brandId = null;
 
             if ($brandName !== '') {
-                $brand = Brand::updateOrCreate(
-                    ['name' => $brandName],
-                    ['slug' => $this->uniqueSlug($brandName, Brand::class, $brandName)]
-                );
+                $brand = Brand::firstOrCreate(['name' => $brandName]);
 
                 if ($brand->wasRecentlyCreated) {
                     $this->brandsImported++;
@@ -118,9 +113,9 @@ class CommerceMLImporter
                 $brandId = $brand->id;
             }
 
-            $product = Product::firstOrNew(['external_id' => $externalId]);
+            $product = Product::firstOrNew(['uuid' => $externalId]);
             $product->name = $name;
-            $product->slug = $this->uniqueSlug($name, Product::class, $externalId);
+            $product->sku = trim((string) ($item->Артикул ?? '')) ?: $product->sku;
             $product->description = trim((string) ($item->Описание ?? '')) ?: null;
             $product->category_id = $category?->id;
             $product->brand_id = $brandId;
@@ -147,7 +142,7 @@ class CommerceMLImporter
                 continue;
             }
 
-            $product = Product::where('external_id', $productGuid)->first();
+            $product = Product::where('uuid', $productGuid)->first();
 
             if (! $product) {
                 continue;
@@ -171,19 +166,4 @@ class CommerceMLImporter
         }
     }
 
-    /**
-     * Генерирует уникальный slug; при коллизии добавляет суффикс.
-     */
-    private function uniqueSlug(string $name, string $model, string $externalId): string
-    {
-        $base = Str::slug($name) ?: 'n-' . Str::slug($externalId) ?: Str::random(8);
-        $slug = $base;
-        $i = 1;
-
-        while ($model::where('slug', $slug)->where('external_id', '!=', $externalId)->exists()) {
-            $slug = $base . '-' . ++$i;
-        }
-
-        return $slug;
-    }
 }

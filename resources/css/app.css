@@ -7,3 +7,6 @@
     --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
 }
+
+/* Тёмная тема: variant dark переключается классом .dark на <html> */
+@custom-variant dark (&:where(.dark, .dark *));
