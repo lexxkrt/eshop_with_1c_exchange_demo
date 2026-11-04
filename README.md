@@ -32,7 +32,9 @@
 - товары сопоставляются по GUID, артикул берётся из узла «Артикул» (`sku`);
 - цены и остатки обновляются из «ПакетПредложений» (offers.xml);
 - бренды создаются из узла «Изготовитель»;
-- slug для категорий, брендов и товаров генерируется автоматически (трейт [HasSlug](app/Models/Concerns/HasSlug.php)) — при переименовании сущности slug обновляется с гарантией уникальности.
+- slug для категорий, брендов и товаров генерируется автоматически (трейт [HasSlug](app/Models/Concerns/HasSlug.php)) — при переименовании сущности slug обновляется с гарантией уникальности;
+- картинки товаров импортируются из узлов «Картинка»: первая становится основным изображением товара, остальные — галереей ([`ProductImage`](app/Models/ProductImage.php)); файлы переносятся из каталога обмена в каталог `ONEC_IMAGES_PATH` (по умолчанию `products/<xx>/`, где `<xx>` — первые два символа слага товара), переименовываются в слаг товара с сохранением расширения (`<slug>.<ext>` — основная, `<slug>-2.<ext>`... — галерея);
+- при удалении сущности физические файлы её картинок удаляются с диска (трейт [HasImage](app/Models/Concerns/HasImage.php)).
 
 ## Технологии
 - Laravel 13, PHP 8.4
@@ -40,6 +42,7 @@
 - Tailwind CSS 4, установленный в проект и собираемый через Vite (`@tailwindcss/vite`), без CDN
 - Денежные значения: каст [MoneyCast](app/Casts/MoneyCast.php) — в БД копейки (int), в приложении рубли (float)
 - Современный синтаксис Eloquent: атрибут `#[Fillable]`, метод `casts()`
+- Трейты моделей: [HasUuid](app/Models/Concerns/HasUuid.php) (автоматический uuid), [HasSlug](app/Models/Concerns/HasSlug.php) (автоматический slug), [HasImage](app/Models/Concerns/HasImage.php) (очистка файлов картинок)
 
 ## Структура кода
 
@@ -52,7 +55,8 @@ app/
 │   ├── CartController.php           # Корзина
 │   ├── CheckoutController.php       # Оформление заказа
 │   └── Api/OneCExchangeController.php # Обмен с 1С
-├── Models/                          # Category, Brand, Product, Order, OrderItem
+├── Models/                          # Category, Brand, Product, ProductImage, Order, OrderItem
+│   └── Concerns/                    # Трейты HasUuid, HasSlug, HasImage
 └── Services/
     ├── CartService.php              # Логика корзины (сессия)
     └── OneC/
@@ -81,6 +85,7 @@ php artisan serve               # http://127.0.0.1:8000
 ```env
 ONEC_LOGIN=1c_user
 ONEC_PASSWORD=1c_secret
+ONEC_IMAGES_PATH=products    # каталог для картинок товаров из 1С
 ONEC_ZIP=true
 ```
 

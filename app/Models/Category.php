@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasImage;
 use App\Models\Concerns\HasSlug;
 use App\Models\Concerns\HasUuid;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -13,6 +14,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 #[Fillable(['name', 'parent_id', 'position', 'image', 'status'])]
 class Category extends Model
 {
+    use HasImage;
     use HasSlug;
     use HasUuid;
 

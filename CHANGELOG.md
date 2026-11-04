@@ -1,5 +1,23 @@
 # Changelog
 
+## [Unreleased] — 2026-11-04 (часть 2)
+
+### Картинки товаров
+
+- **Модель [`ProductImage`](app/Models/ProductImage.php)** + миграция `product_images` (product_id FK cascade, path, position); связь `images()` в модели `Product`.
+- **Импорт картинок из 1С** ([`CommerceMLImporter`](app/Services/OneC/CommerceMLImporter.php)):
+  - узлы `Картинка` из import.xml; первая картинка становится основным изображением товара (`products.image`), остальные — галереей (`product_images`);
+  - синхронизация идемпотентна: изображения, отсутствующие в файле обмена, удаляются;
+  - файлы переносятся из каталога обмена (`storage/app/1c/import_files/...`) в каталог из конфига `ONEC_IMAGES_PATH` (по умолчанию `products`), префикс `import_files/` удаляется;
+  - файл переименовывается в слаг товара с сохранением расширения: `<slug>.<ext>` — основная, `<slug>-2.<ext>`, `<slug>-3.<ext>`... — галерея;
+  - файл кладётся в подпапку из первых двух символов слага: `products/<xx>/<файл>`;
+  - статистика импорта дополнена счётчиком `images`.
+- **Новый trait [`HasImage`](app/Models/Concerns/HasImage.php)**: при удалении модели удаляются физические файлы картинок; подключён к `Product` (основное изображение + галерея), `ProductImage`, `Category`, `Brand`.
+
+### Исправления
+
+- В [`CommerceMLImporter`](app/Services/OneC/CommerceMLImporter.php) GUID из 1С присваивается явно (`$model->uuid = $guid`), а не через mass assignment (поле `uuid` убрано из fillable) — без этого записи получали случайные uuid и дублировались при повторном импорте.
+
 ## [Unreleased] — 2026-11-04
 
 ### Миграции и структура БД

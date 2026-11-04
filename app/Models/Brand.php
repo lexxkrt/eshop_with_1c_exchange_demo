@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasImage;
 use App\Models\Concerns\HasSlug;
 use App\Models\Concerns\HasUuid;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -11,6 +12,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 #[Fillable(['name', 'image', 'status', 'position'])]
 class Brand extends Model
 {
+    use HasImage;
     use HasSlug;
     use HasUuid;
 

@@ -5,6 +5,7 @@ namespace App\Services\OneC;
 use App\Models\Brand;
 use App\Models\Category;
 use App\Models\Product;
+use Illuminate\Support\Facades\Storage;
 use SimpleXMLElement;
 
 /**
@@ -12,7 +13,7 @@ use SimpleXMLElement;
  *
  * Поддерживается структура:
  *  - Классификатор > Группы (дерево категорий, любая вложенность);
- *  - Каталог > Товары (товары, бренд из узла Изготовитель);
+ *  - Каталог > Товары (товары, бренд из узла Изготовитель, картинки — узлы Картинка);
  *  - ПакетПредложений > Предложения (цены и остатки).
  */
 class CommerceMLImporter
@@ -22,6 +23,8 @@ class CommerceMLImporter
     private int $brandsImported = 0;
 
     private int $productsImported = 0;
+
+    private int $imagesImported = 0;
 
     public function importFile(string $path): void
     {
@@ -38,7 +41,7 @@ class CommerceMLImporter
 
     public function stats(): string
     {
-        return "categories: {$this->categoriesImported}, brands: {$this->brandsImported}, products: {$this->productsImported}";
+        return "categories: {$this->categoriesImported}, brands: {$this->brandsImported}, products: {$this->productsImported}, images: {$this->imagesImported}";
     }
 
     private function importClassifier(?SimpleXMLElement $classifier): void
@@ -61,17 +64,17 @@ class CommerceMLImporter
             return;
         }
 
-        Category::updateOrCreate(
-            ['uuid' => $uuid],
-            [
-                'name' => $name,
-                'parent_id' => $parentId,
-            ]
-        );
+        // uuid присваивается явно (не через mass assignment — поле убрано из fillable).
+        $category = Category::findByUuid($uuid) ?? new Category();
 
-        $this->categoriesImported++;
+        if (! $category->exists) {
+            $category->uuid = $uuid;
+            $this->categoriesImported++;
+        }
 
-        $category = Category::where('uuid', $uuid)->first();
+        $category->name = $name;
+        $category->parent_id = $parentId;
+        $category->save();
 
         foreach ($group->Группы?->Группа ?? [] as $child) {
             $this->importGroup($child, $category->id);
@@ -113,7 +116,13 @@ class CommerceMLImporter
                 $brandId = $brand->id;
             }
 
-            $product = Product::firstOrNew(['uuid' => $externalId]);
+            // uuid присваивается явно (не через mass assignment — поле убрано из fillable).
+            $product = Product::findByUuid($externalId) ?? new Product();
+
+            if (! $product->exists) {
+                $product->uuid = $externalId;
+            }
+
             $product->name = $name;
             $product->sku = trim((string) ($item->Артикул ?? '')) ?: $product->sku;
             $product->description = trim((string) ($item->Описание ?? '')) ?: null;
@@ -125,7 +134,58 @@ class CommerceMLImporter
             $product->stock ??= 0;
             $product->save();
 
+            $this->importProductImages($product, $item->Картинка ?? []);
+
             $this->productsImported++;
+        }
+    }
+
+    /**
+     * Импорт картинок товара из узлов Картинка (относительные пути к файлам).
+     *
+     * Первая картинка становится основным изображением товара (products.image),
+     * остальные сохраняются в product_images. Идемпотентно: изображения,
+     * отсутствующие в файле обмена, удаляются; порядок задаётся последовательностью узлов.
+     */
+    private function importProductImages(Product $product, iterable $nodes): void
+    {
+        $paths = [];
+
+        foreach ($nodes as $node) {
+            $path = trim((string) $node);
+
+            if ($path !== '') {
+                $paths[] = $this->importImageFile($product, $path, count($paths));
+            }
+        }
+
+        $paths = array_values(array_unique($paths));
+
+        // Первая картинка — основное изображение товара.
+        $product->image = $paths[0] ?? null;
+        $product->save();
+
+        // Остальные картинки — в product_images.
+        $rest = array_slice($paths, 1);
+
+        // Удаляем изображения, которых больше нет в файле обмена.
+        if ($rest === []) {
+            $product->images()->delete();
+        } else {
+            $product->images()->whereNotIn('path', $rest)->delete();
+        }
+
+        foreach ($rest as $index => $path) {
+            $wasNew = ! $product->images()->where('path', $path)->exists();
+
+            $product->images()->updateOrCreate(
+                ['path' => $path],
+                ['position' => $index + 1]
+            );
+
+            if ($wasNew) {
+                $this->imagesImported++;
+            }
         }
     }
 
@@ -166,4 +226,45 @@ class CommerceMLImporter
         }
     }
 
+    /**
+     * Переносит файл картинки, выгруженный 1С, из каталога обмена
+     * в каталог хранения картинок (config('onec.images_path')).
+     *
+     * Файл кладётся в подпапку из первых двух символов слага товара
+     * и переименовывается в слаг с сохранением расширения:
+     * первая картинка — <images_path>/<xx>/<slug>.<ext>,
+     * последующие — <images_path>/<xx>/<slug>-2.<ext>, <slug>-3.<ext>...
+     * Пути вида import_files/<subdir>/<file> теряют префикс import_files/.
+     */
+    private function importImageFile(Product $product, string $path, int $index): string
+    {
+        $prefix = 'import_files';
+
+        if (! str_starts_with($path, $prefix)) {
+            return $path;
+        }
+
+        $extension = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+        $extension = $extension !== '' ? '.' . $extension : '';
+        $filename = $index === 0
+            ? $product->slug . $extension
+            : $product->slug . '-' . ($index + 1) . $extension;
+
+        $subdir = substr($product->slug, 0, 2);
+        $relativePath = $subdir . '/' . $filename;
+
+        $disk = Storage::disk('local');
+        $source = config('onec.storage_path') . '/' . $path;
+        $target = config('onec.images_path') . '/' . $relativePath;
+
+        if ($disk->exists($source) && ! $disk->exists($target)) {
+            if (! $disk->exists(config('onec.images_path') . '/' . $subdir)) {
+                $disk->makeDirectory(config('onec.images_path') . '/' . $subdir);
+            }
+
+            $disk->move($source, $target);
+        }
+
+        return $target;
+    }
 }

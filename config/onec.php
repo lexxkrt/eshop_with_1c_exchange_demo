@@ -22,6 +22,12 @@ return [
     'storage_path' => '1c',
 
     /*
+    | Каталог (на диске local) для картинок товаров, выгруженных из 1С.
+    | Файлы import_files/... переносятся сюда без префикса import_files/.
+    */
+    'images_path' => env('ONEC_IMAGES_PATH', 'products'),
+
+    /*
     | Максимальный размер файла обмена, байт.
     */
     'file_limit' => 20 * 1024 * 1024,

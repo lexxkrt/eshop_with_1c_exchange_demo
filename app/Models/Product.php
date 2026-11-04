@@ -3,12 +3,14 @@
 namespace App\Models;
 
 use App\Casts\MoneyCast;
+use App\Models\Concerns\HasImage;
 use App\Models\Concerns\HasSlug;
 use App\Models\Concerns\HasUuid;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable([
     'category_id',
@@ -24,6 +26,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 ])]
 class Product extends Model
 {
+    use HasImage;
     use HasSlug;
     use HasUuid;
 
@@ -39,6 +42,19 @@ class Product extends Model
     public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class);
+    }
+
+    public function images(): HasMany
+    {
+        return $this->hasMany(ProductImage::class)->orderBy('position')->orderBy('id');
+    }
+
+    /**
+     * Файлы картинок товара: основное изображение и все картинки галереи.
+     */
+    protected function imageAttributes(): array
+    {
+        return ['image', ...$this->images->pluck('path')->all()];
     }
 
     public function brand(): BelongsTo
