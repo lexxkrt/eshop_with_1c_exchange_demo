@@ -4,11 +4,15 @@ use App\Http\Controllers\CartController;
 use App\Http\Controllers\CatalogController;
 use App\Http\Controllers\BrandController;
 use App\Http\Controllers\CheckoutController;
+use App\Http\Controllers\ImageController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', [CatalogController::class, 'index'])->name('catalog.index');
 Route::get('/brands', [BrandController::class, 'index'])->name('brands.index');
 Route::get('/product/{slug}', [CatalogController::class, 'show'])->name('catalog.show');
+Route::get('/image/{size}/{product}/{image?}', ImageController::class)
+    ->whereIn('size', ['small', 'medium', 'large', 'original'])
+    ->name('image.show');
 
 Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
 Route::post('/cart/add/{product}', [CartController::class, 'add'])->name('cart.add');

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Services\OneC\CommerceMLImporter;
 use App\Services\OneC\OrdersExporter;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -71,7 +72,7 @@ class OneCExchangeController extends Controller
     {
         $filename = $request->query('filename');
 
-        if (! $filename || ! preg_match('/^[\w.\-]+$/', $filename)) {
+        if (! $filename) {
             return $this->plain('failure' . PHP_EOL . 'Некорректное имя файла');
         }
 
@@ -83,6 +84,10 @@ class OneCExchangeController extends Controller
 
         if (strlen($content) > (int) config('onec.file_limit')) {
             return $this->plain('failure' . PHP_EOL . 'Превышен лимит размера файла');
+        }
+
+        if(str($filename)->startsWith('import_files')){
+            $filename = str($filename)->replace('import_files', 'products')->value();
         }
 
         Storage::disk('local')->put(config('onec.storage_path') . '/' . $filename, $content);

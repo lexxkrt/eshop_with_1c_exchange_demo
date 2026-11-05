@@ -1,5 +1,38 @@
 # Changelog
 
+## [Unreleased] — 2026-11-05
+
+### Свойства товаров
+
+- **Модель [`Property`](app/Models/Property.php)** + миграция `properties` (uuid GUID из 1С, name, slug, unit, type — тип значений из 1С, position, status); связь `products()` (belongsToMany) в модели `Property` и `properties()` в модели `Product`.
+- **Миграция [`product_property`](database/migrations/2026_01_01_000007_create_product_property_table.php)**: сводная таблица с составным первичным ключом `(product_id, property_id)`, колонкой `value` (значение свойства у товара) и `position` (порядок), без id и timestamps.
+- **Модель [`PropertyValue`](app/Models/PropertyValue.php)** + миграция: таблица `property_values` — варианты значений свойств-справочников (property_id FK cascade, uuid — GUID варианта из 1С, value, position; unique `(property_id, uuid)`); связь `values()` в `Property`, хелпер `dictionaryValue(uuid)`.
+- **Импорт свойств из 1С** ([`CommerceMLImporter`](app/Services/OneC/CommerceMLImporter.php)):
+  - определения свойств из `Классификатор > Свойства > Свойство` (поиск по GUID, обновление наименования и типа);
+  - варианты справочников из `ВариантыЗначений > Справочник` (`ИдЗначения`/`Значение`) — идемпотентно, отсутствующие в файле удаляются;
+  - значения свойств товара из `ЗначенияСвойств > ЗначенияСвойства` через `sync` pivot; для свойств-справочников GUID варианта заменяется на значение из `property_values`;
+  - наименования свойств очищаются от пояснения в скобках в конце («Форма вафель (Вафельницы)» → «Форма вафель»);
+  - значения-флаги заменяются на читаемые: `true` → «есть», `false` → «нет»;
+  - статистика импорта дополнена счётчиком `properties`.
+- **Свойства в карточке товара** ([`catalog/show.blade.php`](resources/views/catalog/show.blade.php)): блок «Характеристики» (имя + единица измерения + значение), сортировка по pivot `position`; eager load `properties`/`images` в [`CatalogController::show`](app/Http/Controllers/CatalogController.php).
+- Разовое исправление существующих данных: 27 наименований очищены от скобок (slug перегенерирован), 23 значения `true` → «есть».
+
+### Изображения товаров
+
+- **Новый контроллер [`ImageController`](app/Http/Controllers/ImageController.php)** — вывод изображений с изменением размера:
+  - маршрут `GET /image/{size}/{product}/{image?}` (`image.show`), пресеты `size`: `small` (160), `medium` (400), `large` (800), `original` (без ресайза);
+  - обработка через **Intervention Image** (`intervention/image-laravel`): вписывание с сохранением пропорций, выходной формат — всегда **WebP** (качество 85);
+  - кэш отрендеренных файлов на диске `public` (`storage/app/public/image-cache/<size>/...`) — доступен с сайта напрямую по `/storage/image-cache/...`, повторные запросы без пересоздания;
+  - защита от выхода за каталог картинок (`basename`), 404 при отсутствии товара/файла, `Cache-Control: public, max-age=86400`.
+- Хелперы в модели `Product`: `imageUrl(size, path?)` — URL картинки через контроллер.
+
+### Навигация
+
+- **Хлебные крошки переведены на [diglactic/laravel-breadcrumbs](https://github.com/diglactic/laravel-breadcrumbs)**:
+  - определения в [`routes/breadcrumbs.php`](routes/breadcrumbs.php) для всех страниц (главная, каталог с фильтрами категория/бренд/поиск, товар, бренды, корзина, оформление, успех заказа);
+  - авто-режим по текущему маршруту в [`layouts/shop.blade.php`](resources/views/layouts/shop.blade.php); ручные массивы `$breadcrumbs` удалены из всех представлений;
+  - кастомный Tailwind-вид [`partials/breadcrumbs.blade.php`](resources/views/partials/breadcrumbs.blade.php); на главной странице крошки скрыты.
+
 ## [Unreleased] — 2026-11-04 (часть 2)
 
 ### Картинки товаров

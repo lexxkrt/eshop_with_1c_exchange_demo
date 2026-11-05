@@ -1,25 +1,5 @@
 @extends('layouts.shop')
 
-@php
-    // На главной (каталог без фильтров) хлебные крошки не показываем.
-    $isHome = !request('category') && !request('brand') && !request('search');
-
-    if (! $isHome) {
-        $breadcrumbs = [['label' => 'Главная', 'url' => route('catalog.index')]];
-
-        if ($activeCategory = \App\Models\Category::where('slug', request('category'))->with('parent')->first()) {
-            if ($activeCategory->parent) {
-                $breadcrumbs[] = ['label' => $activeCategory->parent->name, 'url' => route('catalog.index', ['category' => $activeCategory->parent->slug])];
-            }
-            $breadcrumbs[] = ['label' => $activeCategory->name];
-        } elseif (request('brand')) {
-            $brandName = \App\Models\Brand::where('slug', request('brand'))->value('name');
-            $breadcrumbs[] = ['label' => $brandName ? "Бренд: {$brandName}" : 'Каталог'];
-        } else {
-            $breadcrumbs[] = ['label' => 'Каталог'];
-        }
-    }
-@endphp
 
 @section('title', 'Каталог товаров')
 

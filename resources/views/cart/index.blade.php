@@ -1,10 +1,5 @@
 @extends('layouts.shop')
 
-@php($breadcrumbs = [
-    ['label' => 'Главная', 'url' => route('catalog.index')],
-    ['label' => 'Корзина'],
-])
-
 @section('title', 'Корзина')
 
 @section('content')

@@ -91,9 +91,9 @@
         </div>
     </header>
 
-    @isset($breadcrumbs)
-        @include('partials.breadcrumbs')
-    @endisset
+    @if (Breadcrumbs::exists())
+        {!! Breadcrumbs::render() !!}
+    @endif
 
     @if (session('success'))
         <div class="max-w-7xl mx-auto px-4 mt-4 w-full">

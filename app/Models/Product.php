@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable([
@@ -62,6 +63,14 @@ class Product extends Model
         return $this->belongsTo(Brand::class);
     }
 
+    public function properties(): BelongsToMany
+    {
+        return $this->belongsToMany(Property::class, 'product_property')
+            ->withPivot('value', 'position')
+            ->orderBy('product_property.position')
+            ->orderBy('name');
+    }
+
     public function scopeActive(Builder $query): Builder
     {
         return $query->where('status', true);
@@ -74,6 +83,28 @@ class Product extends Model
 
     public function priceRub(): string
     {
-        return number_format($this->price, 2, ',', ' ') . ' ₽';
+        return number_format($this->price ?? 0, 2, ',', ' ') . ' ₽';
+    }
+
+    /**
+     * URL картинки товара через контроллер изображений.
+     *
+     * $size — пресет из ImageController::SIZES (small, medium, large, original);
+     * $path — путь к картинке (основное изображение, если не задан).
+     * Выходной формат — WebP.
+     */
+    public function imageUrl(string $size = 'medium', ?string $path = null): ?string
+    {
+        $file = $path ?? $this->image;
+
+        if (! $file) {
+            return null;
+        }
+
+        return route('image.show', [
+            'size' => $size,
+            'product' => $this->slug,
+            'image' => basename($file),
+        ]);
     }
 }

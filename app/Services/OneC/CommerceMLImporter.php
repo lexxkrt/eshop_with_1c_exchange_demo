@@ -5,6 +5,7 @@ namespace App\Services\OneC;
 use App\Models\Brand;
 use App\Models\Category;
 use App\Models\Product;
+use App\Models\Property;
 use Illuminate\Support\Facades\Storage;
 use SimpleXMLElement;
 
@@ -13,7 +14,10 @@ use SimpleXMLElement;
  *
  * Поддерживается структура:
  *  - Классификатор > Группы (дерево категорий, любая вложенность);
- *  - Каталог > Товары (товары, бренд из узла Изготовитель, картинки — узлы Картинка);
+ *  - Классификатор > Свойства > Свойство (определения свойств товаров);
+ *  - Каталог > Товары (товары, бренд из реквизита "Производитель" узла
+ *    ЗначенияРеквизитов с fallback на узел Изготовитель, картинки — узлы Картинка,
+ *    значения свойств — узел ЗначенияСвойств);
  *  - ПакетПредложений > Предложения (цены и остатки).
  */
 class CommerceMLImporter
@@ -21,6 +25,8 @@ class CommerceMLImporter
     private int $categoriesImported = 0;
 
     private int $brandsImported = 0;
+
+    private int $propertiesImported = 0;
 
     private int $productsImported = 0;
 
@@ -41,7 +47,7 @@ class CommerceMLImporter
 
     public function stats(): string
     {
-        return "categories: {$this->categoriesImported}, brands: {$this->brandsImported}, products: {$this->productsImported}, images: {$this->imagesImported}";
+        return "categories: {$this->categoriesImported}, brands: {$this->brandsImported}, properties: {$this->propertiesImported}, products: {$this->productsImported}, images: {$this->imagesImported}";
     }
 
     private function importClassifier(?SimpleXMLElement $classifier): void
@@ -52,6 +58,85 @@ class CommerceMLImporter
 
         foreach ($classifier->Группы?->Группа ?? [] as $group) {
             $this->importGroup($group);
+        }
+
+        $this->importPropertyDefinitions($classifier->Свойства?->Свойство ?? []);
+    }
+
+    /**
+     * Импорт определений свойств из Классификатор > Свойства > Свойство.
+     *
+     * Свойство ищется по GUID из 1С (Ид); новые свойства создаются,
+     * существующие обновляются (наименование, тип). Slug генерируется
+     * автоматически (HasSlug). Для свойств-справочников дополнительно
+     * импортируются варианты значений (ВариантыЗначений > Справочник).
+     */
+    private function importPropertyDefinitions(iterable $nodes): void
+    {
+        foreach ($nodes as $node) {
+            $uuid = (string) ($node->Ид ?? '');
+            $name = (string) ($node->Наименование ?? '');
+
+            if ($uuid === '' || $name === '') {
+                continue;
+            }
+
+            // 1С добавляет в конец наименования пояснение в скобках
+            // (например, "Форма вафель (Вафельницы)") — убираем его.
+            $name = trim((string) preg_replace('/\s*\([^()]*\)\s*$/u', '', $name));
+
+            // uuid присваивается явно (не через mass assignment — поле убрано из fillable).
+            $property = Property::findByUuid($uuid) ?? new Property();
+
+            if (! $property->exists) {
+                $property->uuid = $uuid;
+                $this->propertiesImported++;
+            }
+
+            $property->name = $name;
+            $property->type = trim((string) ($node->ТипЗначений ?? '')) ?: null;
+            $property->status = true;
+            $property->save();
+
+            if ($property->type === Property::TYPE_DICTIONARY) {
+                $this->importPropertyDictionary($property, $node->ВариантыЗначений?->Справочник ?? []);
+            }
+        }
+    }
+
+    /**
+     * Импорт вариантов значений свойства-справочника.
+     *
+     * Каждый вариант ищется по GUID из 1С (ИдЗначения); новые создаются,
+     * существующие обновляются (значение, порядок). Идемпотентно: варианты,
+     * отсутствующие в файле обмена, удаляются; порядок задаётся
+     * последовательностью узлов.
+     */
+    private function importPropertyDictionary(Property $property, iterable $options): void
+    {
+        $uuids = [];
+
+        foreach ($options as $index => $option) {
+            $uuid = trim((string) ($option->ИдЗначения ?? ''));
+            $value = trim((string) ($option->Значение ?? ''));
+
+            if ($value === '') {
+                continue;
+            }
+
+            $property->values()->updateOrCreate(
+                ['uuid' => $uuid !== '' ? $uuid : null],
+                ['value' => $value, 'position' => count($uuids)]
+            );
+
+            $uuids[] = $uuid;
+        }
+
+        // Удаляем варианты, которых больше нет в файле обмена.
+        if ($uuids === []) {
+            $property->values()->delete();
+        } else {
+            $property->values()->whereNotIn('uuid', $uuids)->delete();
         }
     }
 
@@ -102,8 +187,26 @@ class CommerceMLImporter
                 $category = Category::where('uuid', $categoryUuid)->first();
             }
 
-            // Бренд из узла Изготовитель (или Изготовитель/Наименование).
-            $brandName = (string) ($item->Изготовитель?->Наименование ?? $item->Изготовитель ?? '');
+            // Реквизиты товара из узла ЗначенияРеквизитов > ЗначениеРеквизита.
+            $brandName = '';
+
+            foreach ($item->ЗначенияРеквизитов?->ЗначениеРеквизита ?? [] as $rekvit) {
+                switch (trim((string) $rekvit->Наименование)) {
+                    case 'Производитель':
+                        $brandName = trim((string) $rekvit->Значение);
+                        break;
+
+                    // Другие реквизиты добавляются здесь новыми case.
+                    default:
+                        break;
+                }
+            }
+
+            // Fallback: узел Изготовитель (или Изготовитель/Наименование).
+            if ($brandName === '') {
+                $brandName = trim((string) ($item->Изготовитель?->Наименование ?? $item->Изготовитель ?? ''));
+            }
+
             $brandId = null;
 
             if ($brandName !== '') {
@@ -136,8 +239,57 @@ class CommerceMLImporter
 
             $this->importProductImages($product, $item->Картинка ?? []);
 
+            $this->importProductProperties($product, $item->ЗначенияСвойств?->ЗначенияСвойства ?? []);
+
             $this->productsImported++;
         }
+    }
+
+    /**
+     * Импорт значений свойств товара из узла ЗначенияСвойств > ЗначенияСвойства.
+     *
+     * Каждое значение привязывается к товару через pivot product_property
+     * (property_id ищется по GUID из 1С, Ид узла). Для свойств-справочников
+     * в Значении приходит GUID варианта (ИдЗначения) — он заменяется
+     * на значение из property_values. Идемпотентно: sync заменяет
+     * полный набор свойств товара — свойства, отсутствующие в файле обмена,
+     * отвязываются; порядок задаётся последовательностью узлов.
+     */
+    private function importProductProperties(Product $product, iterable $nodes): void
+    {
+        $values = [];
+        $position = 0;
+
+        foreach ($nodes as $node) {
+            $propertyUuid = (string) ($node->Ид ?? '');
+            $value = trim((string) ($node->Значение ?? ''));
+
+            if ($propertyUuid === '' || $value === '') {
+                continue;
+            }
+
+            // Значения-флаги из 1С заменяем на читаемые.
+            $value = match ($value) {
+                'true' => 'есть',
+                'false' => 'нет',
+                default => $value,
+            };
+
+            $property = Property::findByUuid($propertyUuid);
+
+            if (! $property) {
+                continue;
+            }
+
+            if ($property->type === Property::TYPE_DICTIONARY) {
+                // Значение справочника приходит GUID'ом варианта — берём текст из property_values.
+                $value = $property->dictionaryValue($value) ?? $value;
+            }
+
+            $values[$property->id] = ['value' => $value, 'position' => $position++];
+        }
+
+        $product->properties()->sync($values);
     }
 
     /**

@@ -43,7 +43,7 @@ class CatalogController extends Controller
     public function show(string $slug): View
     {
         $product = Product::active()
-            ->with(['category', 'brand'])
+            ->with(['category', 'brand', 'images', 'properties'])
             ->where('slug', $slug)
             ->firstOrFail();
 
