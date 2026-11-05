@@ -16,14 +16,14 @@
             <span class="text-5xl">📦</span>
         @endif
     </a>
-    <div class="p-4 flex flex-col flex-1">
+    <div class="p-3 sm:p-4 flex flex-col flex-1">
         @if ($showMeta)
-            <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">
+            <p class="text-xs text-gray-500 dark:text-gray-400 mb-1 truncate">
                 {{ $product->brand?->name }} · {{ $product->category->name }}
             </p>
         @endif
         <a href="{{ route('catalog.show', $product->slug) }}"
-           class="font-semibold hover:text-indigo-600 line-clamp-2">{{ $product->name }}</a>
+           class="text-sm sm:text-base font-semibold hover:text-indigo-600 line-clamp-2">{{ $product->name }}</a>
         @if (($product->reviews_count ?? 0) > 0)
             <x-rating
                 :rating="$product->reviews_avg_rating"
@@ -32,12 +32,12 @@
                 class="mt-1"
             />
         @endif
-        <div class="mt-auto pt-3 flex items-center justify-between">
-            <span class="text-lg font-bold">{{ $product->priceRub() }}</span>
+        <div class="mt-auto pt-3 flex flex-wrap items-center justify-between gap-2">
+            <span class="text-base sm:text-lg font-bold">{{ $product->priceRub() }}</span>
             <form action="{{ route('cart.add', $product) }}" method="POST">
                 @csrf
                 <button type="submit"
-                        class="px-3 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 transition">
+                        class="px-2 sm:px-3 py-2 rounded-lg bg-indigo-600 text-white text-xs sm:text-sm font-medium hover:bg-indigo-700 transition">
                     В корзину
                 </button>
             </form>

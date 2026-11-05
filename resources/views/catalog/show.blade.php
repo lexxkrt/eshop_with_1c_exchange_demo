@@ -23,31 +23,31 @@
 
     @php $mainImage = $product->imageUrl('large'); @endphp
 
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8">
         <div class="space-y-4">
-            <div class="bg-white dark:bg-gray-800 rounded-xl shadow h-96 flex items-center justify-center overflow-hidden">
+            <div class="bg-white dark:bg-gray-800 rounded-xl shadow h-64 sm:h-80 lg:h-96 flex items-center justify-center overflow-hidden">
                 @if ($mainImage)
                     <img src="{{ $mainImage }}" alt="{{ $product->name }}"
                          class="max-h-full max-w-full object-contain">
                 @else
-                    <span class="text-9xl">📦</span>
+                    <span class="text-8xl sm:text-9xl">📦</span>
                 @endif
             </div>
 
             @if ($product->images->isNotEmpty())
-                <div class="grid grid-cols-6 gap-2">
+                <div class="grid grid-cols-3 sm:grid-cols-6 gap-2">
                     @foreach ($product->images as $galleryImage)
                         <img src="{{ $product->imageUrl('small', $galleryImage->path) }}"
                              alt="{{ $product->name }} — фото {{ $loop->iteration }}"
-                             class="h-20 w-full rounded-lg object-cover bg-white dark:bg-gray-800 shadow cursor-zoom-in">
+                             class="h-20 sm:h-16 lg:h-20 w-full rounded-lg object-cover bg-white dark:bg-gray-800 shadow cursor-zoom-in">
                     @endforeach
                 </div>
             @endif
         </div>
 
-        <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-8">
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-4 sm:p-6 lg:p-8">
             <p class="text-sm text-gray-500 dark:text-gray-400 mb-2">{{ $product->category->name }}</p>
-            <h1 class="text-3xl font-bold mb-4">{{ $product->name }}</h1>
+            <h1 class="text-2xl sm:text-3xl font-bold mb-4 break-words">{{ $product->name }}</h1>
             @if ($reviewsCount)
                 <a href="#reviews" class="inline-flex items-center gap-2 mb-6 text-sm group">
                     <x-rating :rating="$avgRating" class="text-base tracking-wider" />
@@ -73,7 +73,7 @@
                 </div>
             @endif
 
-            <p class="text-4xl font-bold text-indigo-600 mb-2">{{ $product->priceRub() }}</p>
+            <p class="text-3xl sm:text-4xl font-bold text-indigo-600 mb-2">{{ $product->priceRub() }}</p>
             <p class="text-sm mb-6 {{ $product->stock > 0 ? 'text-green-600' : 'text-red-500' }}">
                 @if ($product->stock > 0)
                     В наличии: {{ $product->stock }} шт.
@@ -82,22 +82,22 @@
                 @endif
             </p>
 
-            <form action="{{ route('cart.add', $product) }}" method="POST" class="flex items-center gap-4">
+            <form action="{{ route('cart.add', $product) }}" method="POST" class="flex flex-wrap items-center gap-3 sm:gap-4">
                 @csrf
-                <label class="flex items-center gap-2">
-                    Количество:
+                <label class="flex items-center gap-2 text-sm sm:text-base">
+                    <span>Количество:</span>
                     <input type="number" name="quantity" value="1" min="1" max="{{ max(1, $product->stock) }}"
                            class="w-20 rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 border px-3 py-2">
                 </label>
                 <button type="submit" @disabled($product->stock === 0)
-                        class="px-6 py-3 rounded-lg bg-indigo-600 text-white font-medium hover:bg-indigo-700 transition disabled:opacity-50 disabled:cursor-not-allowed">
+                        class="flex-1 sm:flex-none px-6 py-3 rounded-lg bg-indigo-600 text-white font-medium hover:bg-indigo-700 transition disabled:opacity-50 disabled:cursor-not-allowed">
                     В корзину
                 </button>
             </form>
         </div>
     </div>
 
-    <h2 id="reviews" class="text-2xl font-bold mt-12 mb-2 flex items-center gap-3">
+    <h2 id="reviews" class="text-xl sm:text-2xl font-bold mt-10 sm:mt-12 mb-2 flex flex-wrap items-center gap-x-3 gap-y-1">
         Отзывы
         @if ($reviewsCount)
             <span class="text-base font-normal text-gray-500 dark:text-gray-400">
@@ -108,7 +108,7 @@
         @endif
     </h2>
 
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-6">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 mb-6">
             @if ($reviewsCount)
                 <div class="space-y-4">
                     @foreach ($product->reviews as $review)
@@ -126,7 +126,7 @@
                 <p class="text-gray-500 dark:text-gray-400">Пока нет отзывов. Станьте первым!</p>
             @endif
 
-            <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-6 h-fit">
+            <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-4 sm:p-6 h-fit">
                 <h3 class="font-semibold mb-4">Оставить отзыв</h3>
                 <form action="{{ route('reviews.store', $product) }}" method="POST" class="space-y-4">
                     @csrf
@@ -158,8 +158,8 @@
         </div>
 
     @if ($related->isNotEmpty())
-        <h2 class="text-2xl font-bold mt-12 mb-6">Похожие товары</h2>
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <h2 class="text-xl sm:text-2xl font-bold mt-10 sm:mt-12 mb-6">Похожие товары</h2>
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
             @foreach ($related as $item)
                 <x-product-card :product="$item" image-height="h-36" />
             @endforeach

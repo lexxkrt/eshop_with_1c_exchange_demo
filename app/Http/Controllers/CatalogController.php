@@ -12,6 +12,17 @@ class CatalogController extends Controller
 {
     public function index(Request $request): View
     {
+        $priceRange = [
+            'min' => $request->filled('price_min') ? $this->toKopecks($request->price_min) : null,
+            'max' => $request->filled('price_max') ? $this->toKopecks($request->price_max) : null,
+        ];
+
+        // Если границы перепутаны местами, меняем их между собой.
+        if ($priceRange['min'] !== null && $priceRange['max'] !== null
+            && $priceRange['min'] > $priceRange['max']) {
+            [$priceRange['min'], $priceRange['max']] = [$priceRange['max'], $priceRange['min']];
+        }
+
         $products = Product::active()
             ->ordered()
             ->with(['category', 'brand'])
@@ -29,6 +40,12 @@ class CatalogController extends Controller
             })
             ->when($request->filled('search'), function ($query) use ($request) {
                 $query->where('name', 'like', '%' . $request->search . '%');
+            })
+            ->when($request->filled('price_min'), function ($query) use ($priceRange) {
+                $query->where('price', '>=', $priceRange['min']);
+            })
+            ->when($request->filled('price_max'), function ($query) use ($priceRange) {
+                $query->where('price', '<=', $priceRange['max']);
             })
             ->when($request->input('sort') === 'price_asc', fn ($q) => $q->reorder('price')->orderBy('position'))
             ->when($request->input('sort') === 'price_desc', fn ($q) => $q->reorder('price', 'desc')->orderBy('position'))
@@ -57,5 +74,16 @@ class CatalogController extends Controller
             ->get();
 
         return view('catalog.show', compact('product', 'related'));
+    }
+
+    /**
+     * Переводит введённую пользователем сумму (в рублях) в копейки,
+     * как это делает MoneyCast при записи в БД.
+     */
+    private function toKopecks(mixed $value): int
+    {
+        $normalized = str_replace([' ', ','], ['', '.'], (string) $value);
+
+        return (int) round(max(0, (float) $normalized) * 100);
     }
 }
