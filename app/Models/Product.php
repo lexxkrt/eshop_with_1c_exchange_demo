@@ -50,6 +50,11 @@ class Product extends Model
         return $this->hasMany(ProductImage::class)->orderBy('position')->orderBy('id');
     }
 
+    public function reviews(): HasMany
+    {
+        return $this->hasMany(Review::class)->latest();
+    }
+
     /**
      * Файлы картинок товара: основное изображение и все картинки галереи.
      */
@@ -86,25 +91,4 @@ class Product extends Model
         return number_format($this->price ?? 0, 2, ',', ' ') . ' ₽';
     }
 
-    /**
-     * URL картинки товара через контроллер изображений.
-     *
-     * $size — пресет из ImageController::SIZES (small, medium, large, original);
-     * $path — путь к картинке (основное изображение, если не задан).
-     * Выходной формат — WebP.
-     */
-    public function imageUrl(string $size = 'medium', ?string $path = null): ?string
-    {
-        $file = $path ?? $this->image;
-
-        if (! $file) {
-            return null;
-        }
-
-        return route('image.show', [
-            'size' => $size,
-            'product' => $this->slug,
-            'image' => basename($file),
-        ]);
-    }
 }

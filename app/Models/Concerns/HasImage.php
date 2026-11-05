@@ -3,12 +3,17 @@
 namespace App\Models\Concerns;
 
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 /**
- * Удаление физических файлов картинок при удалении модели.
+ * Работа с картинками модели.
  *
- * Модель задаёт список атрибутов с путями к картинкам (и/или сами пути)
- * методом imageAttributes(). Пути считаются относительными на диске local.
+ * Удаление физических файлов картинок при удалении модели: модель задаёт
+ * список атрибутов с путями к картинкам (и/или сами пути) методом
+ * imageAttributes(). Пути считаются относительными на диске local.
+ *
+ * URL картинки через контроллер изображений (image.show): модель должна
+ * иметь slug; основной атрибут с путём картинки — `image`.
  */
 trait HasImage
 {
@@ -17,6 +22,29 @@ trait HasImage
         static::deleting(function ($model) {
             $model->deleteImageFiles();
         });
+    }
+
+    /**
+     * URL картинки модели через контроллер изображений.
+     *
+     * $size — пресет из ImageController::SIZES (small, medium, large, original);
+     * $path — путь к картинке (основное изображение, если не задан).
+     * Выходной формат — WebP.
+     */
+    public function imageUrl(string $size = 'medium', ?string $path = null): ?string
+    {
+        $file = $path ?? $this->getAttribute('image');
+
+        if (! $file || ! isset($this->slug)) {
+            return null;
+        }
+
+        return route('image.show', [
+            'size' => $size,
+            'type' => Str::snake(class_basename($this)),
+            'model' => $this->slug,
+            'image' => basename($file),
+        ]);
     }
 
     /**

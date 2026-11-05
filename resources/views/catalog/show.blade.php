@@ -4,6 +4,16 @@
 @section('title', $product->name)
 
 @section('content')
+    @php
+        $reviewsCount = $product->reviews->count();
+        $avgRating = $reviewsCount ? round($product->reviews->avg('rating'), 1) : null;
+        $reviewsWord = match (true) {
+            $reviewsCount % 10 === 1 && $reviewsCount % 100 !== 11 => 'отзыв',
+            in_array($reviewsCount % 10, [2, 3, 4]) && ! in_array($reviewsCount % 100, [12, 13, 14]) => 'отзыва',
+            default => 'отзывов',
+        };
+    @endphp
+
     @if ($product->brand)
         <a href="{{ route('catalog.index', ['brand' => $product->brand->slug]) }}"
            class="inline-block mb-4 px-3 py-1 rounded-full bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 text-sm hover:bg-indigo-200 dark:hover:bg-indigo-800/60 transition">
@@ -38,6 +48,15 @@
         <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-8">
             <p class="text-sm text-gray-500 dark:text-gray-400 mb-2">{{ $product->category->name }}</p>
             <h1 class="text-3xl font-bold mb-4">{{ $product->name }}</h1>
+            @if ($reviewsCount)
+                <a href="#reviews" class="inline-flex items-center gap-2 mb-6 text-sm group">
+                    <x-rating :rating="$avgRating" class="text-base tracking-wider" />
+                    <span class="text-gray-500 dark:text-gray-400 group-hover:text-indigo-600 transition">
+                        {{ $avgRating }} · {{ $reviewsCount }} {{ $reviewsWord }}
+                    </span>
+                </a>
+            @endif
+
             <p class="text-gray-600 dark:text-gray-300 mb-6">{{ $product->description }}</p>
 
             @if ($product->properties->isNotEmpty())
@@ -46,9 +65,7 @@
                     <dl class="space-y-1.5 text-sm">
                         @foreach ($product->properties as $property)
                             <div class="flex justify-between gap-4">
-                                <dt class="text-gray-500 dark:text-gray-400">
-                                    {{ $property->name }}@if ($property->unit) <span class="text-gray-400 dark:text-gray-500">({{ $property->unit }})</span>@endif
-                                </dt>
+                                <dt class="text-gray-500 dark:text-gray-400">{{ $property->name }}</dt>
                                 <dd class="font-medium text-right">{{ $property->pivot->value }}</dd>
                             </div>
                         @endforeach
@@ -80,34 +97,71 @@
         </div>
     </div>
 
+    <h2 id="reviews" class="text-2xl font-bold mt-12 mb-2 flex items-center gap-3">
+        Отзывы
+        @if ($reviewsCount)
+            <span class="text-base font-normal text-gray-500 dark:text-gray-400">
+                {{ $reviewsCount }} @if ($avgRating) — средняя оценка
+                <span class="text-amber-500 font-semibold">{{ $avgRating }} ★</span>
+                @endif
+            </span>
+        @endif
+    </h2>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-6">
+            @if ($reviewsCount)
+                <div class="space-y-4">
+                    @foreach ($product->reviews as $review)
+                        <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-5">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="font-semibold">{{ $review->author_name }}</span>
+                                <span class="text-sm text-gray-400">{{ $review->created_at->format('d.m.Y') }}</span>
+                            </div>
+                            <x-rating :rating="$review->rating" class="mb-2" />
+                            <p class="text-gray-600 dark:text-gray-300 whitespace-pre-line">{{ $review->comment }}</p>
+                        </div>
+                    @endforeach
+                </div>
+            @else
+                <p class="text-gray-500 dark:text-gray-400">Пока нет отзывов. Станьте первым!</p>
+            @endif
+
+            <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-6 h-fit">
+                <h3 class="font-semibold mb-4">Оставить отзыв</h3>
+                <form action="{{ route('reviews.store', $product) }}" method="POST" class="space-y-4">
+                    @csrf
+                    <div>
+                        <label class="block text-sm mb-1">Ваше имя</label>
+                        <input type="text" name="author_name" value="{{ old('author_name') }}" required maxlength="100"
+                               class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 border px-3 py-2">
+                    </div>
+                    <div>
+                        <label class="block text-sm mb-1">Оценка</label>
+                        <select name="rating" required
+                                class="rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 border px-3 py-2">
+                            @for ($i = 5; $i >= 1; $i--)
+                                <option value="{{ $i }}" @selected(old('rating') == $i)>{{ $i }} {{ str_repeat('★', $i) }}</option>
+                            @endfor
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm mb-1">Отзыв</label>
+                        <textarea name="comment" rows="4" required maxlength="2000"
+                                  class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 border px-3 py-2">{{ old('comment') }}</textarea>
+                    </div>
+                    <button type="submit"
+                            class="px-6 py-2 rounded-lg bg-indigo-600 text-white font-medium hover:bg-indigo-700 transition">
+                        Отправить
+                    </button>
+                </form>
+            </div>
+        </div>
+
     @if ($related->isNotEmpty())
         <h2 class="text-2xl font-bold mt-12 mb-6">Похожие товары</h2>
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             @foreach ($related as $item)
-                <div class="bg-white dark:bg-gray-800 rounded-xl shadow hover:shadow-lg transition overflow-hidden flex flex-col">
-                    <a href="{{ route('catalog.show', $item->slug) }}"
-                       class="h-36 flex items-center justify-center overflow-hidden bg-gradient-to-br from-indigo-100 to-indigo-200 dark:from-indigo-900/40 dark:to-indigo-800/40">
-                        @if ($item->imageUrl('medium'))
-                            <img src="{{ $item->imageUrl('medium') }}" alt="{{ $item->name }}" class="h-full w-full object-cover">
-                        @else
-                            <span class="text-5xl">📦</span>
-                        @endif
-                    </a>
-                    <div class="p-4 flex flex-col flex-1">
-                        <a href="{{ route('catalog.show', $item->slug) }}" class="font-semibold hover:text-indigo-600">
-                            {{ $item->name }}
-                        </a>
-                        <div class="mt-auto pt-3 flex items-center justify-between">
-                            <span class="font-bold">{{ $item->priceRub() }}</span>
-                            <form action="{{ route('cart.add', $item) }}" method="POST">
-                                @csrf
-                                <button type="submit" class="px-3 py-2 rounded-lg bg-indigo-600 text-white text-sm hover:bg-indigo-700">
-                                    В корзину
-                                </button>
-                            </form>
-                        </div>
-                    </div>
-                </div>
+                <x-product-card :product="$item" image-height="h-36" />
             @endforeach
         </div>
     @endif

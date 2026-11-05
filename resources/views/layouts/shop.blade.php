@@ -78,6 +78,34 @@
                    class="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 font-medium hover:bg-indigo-50 hover:text-indigo-600 dark:hover:bg-gray-700 dark:hover:text-indigo-400 transition">
                     Бренды
                 </a>
+                @auth
+                    @if (auth()->user()->isAdmin())
+                        <a href="{{ route('admin.dashboard') }}"
+                           class="px-4 py-2 rounded-lg border border-amber-400 text-amber-600 dark:text-amber-400 font-medium hover:bg-amber-50 dark:hover:bg-amber-900/30 transition">
+                            Админ
+                        </a>
+                    @endif
+                    <div class="flex items-center gap-2">
+                        <span class="font-medium">{{ auth()->user()->name }}</span>
+                        <form action="{{ route('logout') }}" method="POST">
+                            @csrf
+                            <button type="submit" title="Выйти"
+                                    class="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/30 transition">
+                                Выйти
+                            </button>
+                        </form>
+                    </div>
+                @endauth
+                @guest
+                    <a href="{{ route('login') }}"
+                       class="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 font-medium hover:bg-indigo-50 hover:text-indigo-600 dark:hover:bg-gray-700 dark:hover:text-indigo-400 transition">
+                        Войти
+                    </a>
+                    <a href="{{ route('register') }}"
+                       class="px-4 py-2 rounded-lg bg-gray-800 dark:bg-white text-white dark:text-gray-900 font-medium hover:opacity-90 transition">
+                        Регистрация
+                    </a>
+                @endguest
                 <a href="{{ route('cart.index') }}" class="relative px-4 py-2 rounded-lg bg-indigo-600 text-white font-medium hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 transition">
                 Корзина
                 @php $cartCount = app(\App\Services\CartService::class)->count(); @endphp

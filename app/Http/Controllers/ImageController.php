@@ -2,17 +2,24 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Brand;
+use App\Models\Category;
 use App\Models\Product;
 use Illuminate\Support\Facades\Storage;
 use Intervention\Image\Laravel\Facades\Image;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 /**
- * Вывод изображения товара в заданном размере.
+ * Вывод изображения модели (товар, категория, бренд) в заданном размере.
  *
- * Маршрут: /image/{size}/{product}/{image?}, где size — small, medium,
- * large или original; product — слаг товара; image — имя файла картинки
- * (не задано — основное изображение товара). Выходной формат всегда WebP.
+ * Маршрут: /image/{size}/{type}/{model}/{image?}, где
+ *  size — small, medium, large или original;
+ *  type — тип модели (product, category, brand);
+ *  model — слаг модели;
+ *  image — имя файла картинки (не задано — основное изображение модели).
+ *
+ * Файлы картинок лежат на диске local в каталоге config('onec.images_path')
+ * в подпапке из первых двух символов слага модели. Выходной формат — WebP.
  * Результат кэшируется на диске public в image-cache/{size}/...
  * (доступен с сайта напрямую по /storage/image-cache/...), поэтому
  * повторные запросы отдаются без пересоздания.
@@ -30,34 +37,47 @@ class ImageController extends Controller
     ];
 
     /**
+     * Поддерживаемые типы моделей с картинками (trait HasImage и slug).
+     */
+    private const IMAGEABLE = [
+        'product' => Product::class,
+        'category' => Category::class,
+        'brand' => Brand::class,
+    ];
+
+    /**
      * Качество кодирования WebP.
      */
     private const WEBP_QUALITY = 85;
 
-    public function __invoke(string $size, string $product, ?string $image = null): BinaryFileResponse
+    public function __invoke(string $size, string $type, string $model, ?string $image = null): BinaryFileResponse
     {
         abort_unless(array_key_exists($size, self::SIZES), 404);
+        abort_unless(array_key_exists($type, self::IMAGEABLE), 404);
 
         $maxSide = self::SIZES[$size];
 
-        $productModel = Product::query()->where('slug', $product)->firstOrFail();
+        $modelInstance = self::IMAGEABLE[$type]::query()
+            ->where('slug', $model)
+            ->firstOrFail();
 
-        $file = basename($image ?? $productModel->image ?? '');
+        // basename защищает от выхода за пределы каталога картинок.
+        $file = basename($image ?? $modelInstance->image ?? '');
 
         abort_if($file === '' || $file === '.', 404);
 
-        $sourceDisk = Storage::disk('local');
-        $sourcePath = config('onec.images_path') . '/' . substr($productModel->slug, 0, 2) . '/' . $file;
+        $disk = Storage::disk('local');
+        $sourcePath = config('onec.images_path') . '/' . substr($modelInstance->slug, 0, 2) . '/' . $file;
 
-        abort_unless($sourceDisk->exists($sourcePath), 404);
+        abort_unless($disk->exists($sourcePath), 404);
 
         // Кэш на диске public — файлы доступны с сайта по /storage/image-cache/...
         $cacheDisk = Storage::disk('public');
-        $cachePath = 'image-cache/' . $size . '/' . substr($productModel->slug, 0, 2)
+        $cachePath = 'image-cache/' . $size . '/' . substr($modelInstance->slug, 0, 2)
             . '/' . pathinfo($file, PATHINFO_FILENAME) . '.webp';
 
         if (! $cacheDisk->exists($cachePath)) {
-            $this->convert($sourceDisk->path($sourcePath), $cacheDisk->path($cachePath), $maxSide);
+            $this->convert($disk->path($sourcePath), $cacheDisk->path($cachePath), $maxSide);
         }
 
         return response()->file($cacheDisk->path($cachePath), ['Cache-Control' => 'public, max-age=86400']);

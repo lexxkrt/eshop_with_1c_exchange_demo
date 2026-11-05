@@ -85,6 +85,15 @@ class CommerceMLImporter
             // (например, "Форма вафель (Вафельницы)") — убираем его.
             $name = trim((string) preg_replace('/\s*\([^()]*\)\s*$/u', '', $name));
 
+            // Единица измерения указывается после запятой в конце
+            // наименования ("Мощность, Вт") — отделяем её в unit.
+            $unit = null;
+
+            if (preg_match('/^(.+?),\s*([^\s,]{1,12})$/u', $name, $matches)) {
+                $name = trim($matches[1]);
+                $unit = $matches[2];
+            }
+
             // uuid присваивается явно (не через mass assignment — поле убрано из fillable).
             $property = Property::findByUuid($uuid) ?? new Property();
 
@@ -94,6 +103,7 @@ class CommerceMLImporter
             }
 
             $property->name = $name;
+            $property->unit = $unit;
             $property->type = trim((string) ($node->ТипЗначений ?? '')) ?: null;
             $property->status = true;
             $property->save();
@@ -284,6 +294,15 @@ class CommerceMLImporter
             if ($property->type === Property::TYPE_DICTIONARY) {
                 // Значение справочника приходит GUID'ом варианта — берём текст из property_values.
                 $value = $property->dictionaryValue($value) ?? $value;
+            }
+
+            // Дописываем единицу измерения к значению ("600" -> "600 Вт"),
+            // кроме значений-флагов («есть»/«нет») и случаев, когда она уже есть.
+            if ($property->unit
+                && ! in_array($value, ['есть', 'нет'], true)
+                && ! str_contains($value, $property->unit)
+            ) {
+                $value .= ' ' . $property->unit;
             }
 
             $values[$property->id] = ['value' => $value, 'position' => $position++];

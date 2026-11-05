@@ -74,29 +74,7 @@
             @else
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                     @foreach ($products as $product)
-                        <div class="bg-white dark:bg-gray-800 rounded-xl shadow hover:shadow-lg transition overflow-hidden flex flex-col">
-                            <a href="{{ route('catalog.show', $product->slug) }}"
-                               class="h-44 bg-gradient-to-br from-indigo-100 to-indigo-200 dark:from-indigo-900/40 dark:to-indigo-800/40 flex items-center justify-center text-6xl">
-                                📦
-                            </a>
-                            <div class="p-4 flex flex-col flex-1">
-                                <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">
-                                    {{ $product->brand?->name }} · {{ $product->category->name }}
-                                </p>
-                                <a href="{{ route('catalog.show', $product->slug) }}"
-                                   class="font-semibold hover:text-indigo-600 line-clamp-2">{{ $product->name }}</a>
-                                <div class="mt-auto pt-3 flex items-center justify-between">
-                                    <span class="text-lg font-bold">{{ $product->priceRub() }}</span>
-                                    <form action="{{ route('cart.add', $product) }}" method="POST">
-                                        @csrf
-                                        <button type="submit"
-                                                class="px-3 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 transition">
-                                            В корзину
-                                        </button>
-                                    </form>
-                                </div>
-                            </div>
-                        </div>
+                        <x-product-card :product="$product" :show-meta="true" />
                     @endforeach
                 </div>
 

@@ -12,19 +12,45 @@
   - варианты справочников из `ВариантыЗначений > Справочник` (`ИдЗначения`/`Значение`) — идемпотентно, отсутствующие в файле удаляются;
   - значения свойств товара из `ЗначенияСвойств > ЗначенияСвойства` через `sync` pivot; для свойств-справочников GUID варианта заменяется на значение из `property_values`;
   - наименования свойств очищаются от пояснения в скобках в конце («Форма вафель (Вафельницы)» → «Форма вафель»);
+  - единица измерения извлекается из наименования после запятой («Мощность, Вт» → name «Мощность», unit «Вт») и дописывается к значению товара («600» → «600 Вт»; кроме флагов «есть»/«нет»);
   - значения-флаги заменяются на читаемые: `true` → «есть», `false` → «нет»;
   - статистика импорта дополнена счётчиком `properties`.
+- Разовое исправление существующих данных: 27 наименований очищены от скобок (slug перегенерирован), 23 значения `true` → «есть», unit извлечён и дописан к значениям.
 - **Свойства в карточке товара** ([`catalog/show.blade.php`](resources/views/catalog/show.blade.php)): блок «Характеристики» (имя + единица измерения + значение), сортировка по pivot `position`; eager load `properties`/`images` в [`CatalogController::show`](app/Http/Controllers/CatalogController.php).
 - Разовое исправление существующих данных: 27 наименований очищены от скобок (slug перегенерирован), 23 значения `true` → «есть».
 
 ### Изображения товаров
 
-- **Новый контроллер [`ImageController`](app/Http/Controllers/ImageController.php)** — вывод изображений с изменением размера:
-  - маршрут `GET /image/{size}/{product}/{image?}` (`image.show`), пресеты `size`: `small` (160), `medium` (400), `large` (800), `original` (без ресайза);
+- **Новый контроллер [`ImageController`](app/Http/Controllers/ImageController.php)** — универсальный вывод изображений моделей (product/category/brand) с изменением размера:
+  - маршрут `GET /image/{size}/{type}/{model}/{image?}` (`image.show`), пресеты `size`: `small` (160), `medium` (400), `large` (800), `original` (без ресайза); `type` ограничен `whereIn`;
   - обработка через **Intervention Image** (`intervention/image-laravel`): вписывание с сохранением пропорций, выходной формат — всегда **WebP** (качество 85);
   - кэш отрендеренных файлов на диске `public` (`storage/app/public/image-cache/<size>/...`) — доступен с сайта напрямую по `/storage/image-cache/...`, повторные запросы без пересоздания;
   - защита от выхода за каталог картинок (`basename`), 404 при отсутствии товара/файла, `Cache-Control: public, max-age=86400`.
-- Хелперы в модели `Product`: `imageUrl(size, path?)` — URL картинки через контроллер.
+- Метод `imageUrl(size, path?)` вынесен в trait [`HasImage`](app/Models/Concerns/HasImage.php) и доступен любой модели с трейтом (тип модели в URL определяется автоматически через `class_basename`); для моделей без slug возвращается `null`.
+
+### Отзывы
+
+- **Модель [`Review`](app/Models/Review.php)** + миграция `reviews` (product_id FK cascade, author_name, rating 1–5, comment), константы `MIN_RATING`/`MAX_RATING`; связь `reviews()` в `Product`.
+- **[`ReviewController`](app/Http/Controllers/ReviewController.php)**: публикация отзыва (`reviews.store`) с валидацией (имя ≤100, rating integer 1–5, комментарий ≤2000), флеш-сообщение.
+- **Блок отзывов в карточке товара** ([`catalog/show.blade.php`](resources/views/catalog/show.blade.php)): список (автор, дата, звёзды, текст), форма «Оставить отзыв» с сохранением `old()`, пустое состояние; заголовок с якорем `#reviews`.
+- **Рейтинг в карточке товара**: звёзды по средней оценке + «N отзывов» (русская плюрализация) со ссылкой-якорем на отзывы.
+- **Рейтинг в списке товаров** ([`catalog/index.blade.php`](resources/views/catalog/index.blade.php)): звёзды и «4.5 (2)» в карточках, агрегаты `withCount`/`withAvg` одним запросом, ссылка на `#reviews` карточки.
+
+### Blade-компоненты
+
+- Дублирующиеся блоки view вынесены в анонимные компоненты:
+  - [`<x-rating>`](resources/views/components/rating.blade.php) — звёздный рейтинг (props: rating, count, href), вложенный [`<x-rating.stars>`](resources/views/components/rating/stars.blade.php) рендерит 5 звёзд;
+  - [`<x-product-card>`](resources/views/components/product-card.blade.php) — карточка товара для списков (props: product, imageHeight, showMeta): картинка с заглушкой, мета, название, рейтинг, цена и форма «В корзину»; используется в каталоге и «Похожих товарах».
+- `@include` в проекте не используется.
+
+### Авторизация и роли
+
+- **Роли пользователей**: колонка `role` в `users` (`user` / `admin`), константы и метод `isAdmin()` в модели [`User`](app/Models/User.php); роль присваивается явно (вне fillable — по конвенции проекта).
+- **[`AuthController`](app/Http/Controllers/AuthController.php)**: регистрация (пароль `Password::min(8)` + подтверждение), вход (`Auth::attempt` + remember), выход (инвалидация сессии).
+- **Middleware [`EnsureUserIsAdmin`](app/Http/Middleware/EnsureUserIsAdmin.php)** (алиас `admin`) — 403 для не-администраторов.
+- **Панель администратора** (`/admin`, [`Admin/DashboardController`](app/Http/Controllers/Admin/DashboardController.php)): статистика заказов и таблица заказов; доступ `auth` + `admin`.
+- **Шапка сайта**: для гостей — «Войти»/«Регистрация», для авторизованных — имя, кнопка «Админ» (для админов) и «Выйти».
+- **Сеялка [`AdminUserSeeder`](database/seeders/AdminUserSeeder.php)**: админ по умолчанию (конфигурируется `ADMIN_EMAIL`/`ADMIN_PASSWORD`, по умолчанию `admin@shop.local` / `admin-password`).
 
 ### Навигация
 

@@ -15,6 +15,8 @@ class CatalogController extends Controller
         $products = Product::active()
             ->ordered()
             ->with(['category', 'brand'])
+            ->withCount('reviews')
+            ->withAvg('reviews', 'rating')
             ->when($request->filled('category'), function ($query) use ($request) {
                 $category = Category::where('slug', $request->category)
                     ->with('children')
@@ -43,7 +45,7 @@ class CatalogController extends Controller
     public function show(string $slug): View
     {
         $product = Product::active()
-            ->with(['category', 'brand', 'images', 'properties'])
+            ->with(['category', 'brand', 'images', 'properties', 'reviews'])
             ->where('slug', $slug)
             ->firstOrFail();
 

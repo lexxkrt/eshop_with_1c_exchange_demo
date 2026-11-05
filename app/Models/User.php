@@ -18,6 +18,13 @@ class User extends Authenticatable
     use HasFactory, Notifiable;
 
     /**
+     * Роли пользователей.
+     */
+    public const ROLE_USER = 'user';
+
+    public const ROLE_ADMIN = 'admin';
+
+    /**
      * Get the attributes that should be cast.
      *
      * @return array<string, string>
@@ -28,5 +35,10 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
         ];
+    }
+
+    public function isAdmin(): bool
+    {
+        return $this->role === self::ROLE_ADMIN;
     }
 }
