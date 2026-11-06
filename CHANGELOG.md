@@ -1,5 +1,35 @@
 # Changelog
 
+## [Unreleased] — 2026-11-06
+
+### Разделение контроллеров каталога
+
+- **[`CategoryController`](app/Http/Controllers/CategoryController.php)** — страница категории `GET /category/{slug}` (`categories.show`): товары категории и всех её подкатегорий, в сайдбаре список подкатегорий.
+- **[`BrandController`](app/Http/Controllers/BrandController.php)** — добавлена страница бренда `GET /brand/{slug}` (`brands.show`); список брендов остался на `/brands`.
+- **[`SearchController`](app/Http/Controllers/SearchController.php)** — страница поиска `GET /search?q=...` (`search.index`) вынесена из каталога.
+- **[`CatalogController`](app/Http/Controllers/CatalogController.php) упрощён** — остались только основной каталог `/` (фильтр бренда и цены) и карточка товара.
+- **Общая логика выборки вынесена в сервис [`ProductFilter`](app/Services/Catalog/ProductFilter.php)**: базовый запрос активных товаров, конвертация рубли → копейки (`toKopecks`), фильтр цены, сортировка, пагинация; фасетные методы `facetCounts()` и `brandsInSelection()`.
+
+### Отдельные представления и компоненты
+
+- Каждая страница имеет своё view со своими настройками: [`catalog/index.blade.php`](resources/views/catalog/index.blade.php) (фильтры цены и бренда), [`categories/show.blade.php`](resources/views/categories/show.blade.php) (сайдбар с подкатегориями и производителями), [`brands/show.blade.php`](resources/views/brands/show.blade.php) (навигация по брендам), [`search/index.blade.php`](resources/views/search/index.blade.php) (фасетные фильтры отбора).
+- Общие блоки вынесены в анонимные компоненты: [`<x-price-filter>`](resources/views/components/price-filter.blade.php) (фильтр цены с сохранением активных фильтров `q`/`category`/`brand`/`sort`), [`<x-product-toolbar>`](resources/views/components/product-toolbar.blade.php) (заголовок раздела + сортировка), [`<x-product-listing>`](resources/views/components/product-listing.blade.php) (сетка товаров с пагинацией).
+
+### Фасетные фильтры
+
+- **Поиск**: в сайдбаре категории и производители, присутствующие в текущем отборе (поиск + цена), с количеством товаров; выбранная категория фильтрует с учётом подкатегорий (`descendantIds()`), снятие фильтра повторным кликом (`fullUrlWithoutQuery`); категории выводятся с префиксом родителя («Электроизделия / Посуда»).
+- **Страница категории**: фасетный фильтр производителей — только бренды, представленные в категории, с количеством товаров.
+
+### Навигация и шапка
+
+- **Хлебные крошки**: генераторы `categories.show` / `brands.show` принимают строку slug (diglactic/breadcrumbs передаёт параметры маршрута как есть), цепочка категорий ссылается на `categories.show` вместо устаревшего `catalog.index?category=`.
+- **Шапка** ([`layouts/shop.blade.php`](resources/views/layouts/shop.blade.php)): убран дублирующий мобильный список категорий на `<details>` — оставлено одно выпадающее меню на hover.
+
+### Изображения товаров (восстановление)
+
+- **Исправлен [`CommerceMLImporter`](app/Services/OneC/CommerceMLImporter.php)**: в `importImageFile()` если файл не найден по `1c/import_files/...`, выполняется попытка найти его без префикса `import_files/` (exchange сохранял архив без префикса).
+- **Разовое восстановление картинок** — скрипт [`scripts/repair-images.php`](scripts/repair-images.php): файлы из `1c/products/<xx>/<guid>_<guid>.jpg` сопоставляются с товарами по `products.uuid` (первая часть имени файла — GUID товара) и переносятся в целевые пути DB `products/<xx>/<slug>[-N].jpg` с сохранением порядка отображения (`products.image`, затем `product_images` по `position`); перенесено 46 файлов.
+
 ## [Unreleased] — 2026-11-05 (часть 2)
 
 ### Тестовые данные

@@ -425,7 +425,20 @@ class CommerceMLImporter
         $relativePath = $subdir . '/' . $filename;
 
         $disk = Storage::disk('local');
+
+        // Файлы могут лежать как в 1c/import_files/..., так и в 1c/...
+        // (если exchange сохранил архив без префикса import_files/).
         $source = config('onec.storage_path') . '/' . $path;
+
+        if (! $disk->exists($source)) {
+            $alternative = config('onec.storage_path') . '/'
+                . preg_replace('#^import_files/#', '', $path);
+
+            if ($disk->exists($alternative)) {
+                $source = $alternative;
+            }
+        }
+
         $target = config('onec.images_path') . '/' . $relativePath;
 
         if ($disk->exists($source) && ! $disk->exists($target)) {

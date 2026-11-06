@@ -1,3 +1,6 @@
+/.claude
+composer.lock
+package-lock.json
 *.log
 .DS_Store
 .env
@@ -27,3 +30,5 @@ Homestead.yaml
 Thumbs.db
 
 /screenshots
+.mcp.json
+boost.json

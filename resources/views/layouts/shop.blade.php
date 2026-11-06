@@ -24,21 +24,8 @@
             <div class="flex items-center gap-3 sm:gap-6">
                 <a href="{{ route('catalog.index') }}" class="text-xl sm:text-2xl font-bold text-indigo-600 dark:text-indigo-400">🛒 Shop</a>
 
-                {{-- Мобильное меню категорий (без JS, на <details>) --}}
-                <details class="relative md:hidden">
-                    <summary class="flex items-center gap-2 px-3 py-2 rounded-lg bg-indigo-600 text-white font-medium cursor-pointer list-none [&::-webkit-details-marker]:hidden hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 transition">
-                        Каталог
-                        <span class="text-xs">▼</span>
-                    </summary>
-                    <div class="absolute left-0 top-full mt-2 w-64 z-50">
-                        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-100 dark:border-gray-700 py-2 max-h-[70vh] overflow-y-auto">
-                            @include('partials.categories-menu')
-                        </div>
-                    </div>
-                </details>
-
-                {{-- Выпадающее меню категорий (десктоп) --}}
-                <nav class="relative group hidden md:block">
+                {{-- Выпадающее меню категорий --}}
+                <nav class="relative group">
                     <button type="button"
                             class="flex items-center gap-2 px-4 py-2 rounded-lg bg-indigo-600 text-white font-medium hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 transition">
                         Каталог
@@ -54,9 +41,9 @@
                 </nav>
             </div>
 
-            <form action="{{ route('catalog.index') }}" method="GET"
+            <form action="{{ route('search.index') }}" method="GET"
                   class="order-last w-full sm:order-none sm:w-auto sm:flex-1 sm:max-w-md">
-                <input type="text" name="search" value="{{ request('search') }}" placeholder="Поиск товаров..."
+                <input type="text" name="q" value="{{ request('q') }}" placeholder="Поиск товаров..."
                        class="w-full rounded-lg bg-white dark:bg-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600 border px-4 py-2 text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-indigo-500">
             </form>
 

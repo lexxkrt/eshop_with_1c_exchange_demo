@@ -2,17 +2,28 @@
 
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\BrandController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\CatalogController;
-use App\Http\Controllers\BrandController;
+use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\ImageController;
 use App\Http\Controllers\ReviewController;
+use App\Http\Controllers\SearchController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', [CatalogController::class, 'index'])->name('catalog.index');
-Route::get('/brands', [BrandController::class, 'index'])->name('brands.index');
 Route::get('/product/{slug}', [CatalogController::class, 'show'])->name('catalog.show');
+
+// Категории.
+Route::get('/category/{slug}', [CategoryController::class, 'show'])->name('categories.show');
+
+// Бренды.
+Route::get('/brands', [BrandController::class, 'index'])->name('brands.index');
+Route::get('/brand/{slug}', [BrandController::class, 'show'])->name('brands.show');
+
+// Поиск.
+Route::get('/search', [SearchController::class, 'index'])->name('search.index');
 Route::post('/product/{product}/reviews', [ReviewController::class, 'store'])->name('reviews.store');
 Route::get('/image/{size}/{type}/{model}/{image?}', ImageController::class)
     ->whereIn('size', ['small', 'medium', 'large', 'original'])

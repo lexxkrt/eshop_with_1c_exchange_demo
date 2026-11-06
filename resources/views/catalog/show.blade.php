@@ -15,7 +15,7 @@
     @endphp
 
     @if ($product->brand)
-        <a href="{{ route('catalog.index', ['brand' => $product->brand->slug]) }}"
+        <a href="{{ route('brands.show', $product->brand->slug) }}"
            class="inline-block mb-4 px-3 py-1 rounded-full bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 text-sm hover:bg-indigo-200 dark:hover:bg-indigo-800/60 transition">
             {{ $product->brand->name }}
         </a>

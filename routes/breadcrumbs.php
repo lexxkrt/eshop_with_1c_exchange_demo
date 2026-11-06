@@ -25,35 +25,45 @@ $pushCategoryChain = function ($trail, ?Category $category): void {
     }
 
     foreach ($chain as $item) {
-        $trail->push($item->name, route('catalog.index', ['category' => $item->slug]));
+        $trail->push($item->name, route('categories.show', $item->slug));
     }
 };
 
-// Каталог (учитывает фильтры category/brand/search из query-параметров).
+// Загружает категорию по slug из параметра маршрута.
+$findCategory = fn (string $slug): Category => Category::query()->where('slug', $slug)->firstOrFail();
+
+// Каталог (учитывает фильтр brand из query-параметров — сайдбар фильтров).
 // На главной (без фильтров) trail остаётся пустым — крошки не выводятся.
-Breadcrumbs::for('catalog.index', function ($trail) use ($pushCategoryChain) {
-    if ($categorySlug = request('category')) {
-        $trail->parent('home');
-        $pushCategoryChain($trail, Category::where('slug', $categorySlug)->first());
-
-        return;
-    }
-
+Breadcrumbs::for('catalog.index', function ($trail) {
     if ($brandSlug = request('brand')) {
         $trail->parent('home');
 
         $name = Brand::where('slug', $brandSlug)->value('name');
         $trail->push($name ? "Бренд: {$name}" : 'Каталог', url()->current());
-
-        return;
     }
+});
 
-    if ($search = request('search')) {
-        $trail->parent('home');
-        $trail->push("Поиск: {$search}", url()->current());
+// Страница категории: Главная / ... / Категория.
+// diglactic/breadcrumbs передаёт параметры маршрута как есть,
+// поэтому здесь приходит строка slug, а не модель Category.
+Breadcrumbs::for('categories.show', function ($trail, string $slug) use ($pushCategoryChain, $findCategory) {
+    $trail->parent('home');
+    $pushCategoryChain($trail, $findCategory($slug));
+});
 
-        return;
-    }
+// Страница бренда: Главная / Бренды / Бренд.
+// В генератор приходит строка slug из параметра маршрута.
+Breadcrumbs::for('brands.show', function ($trail, string $slug) {
+    $brand = Brand::query()->where('slug', $slug)->firstOrFail();
+
+    $trail->parent('brands.index');
+    $trail->push($brand->name, route('brands.show', $brand->slug));
+});
+
+// Поиск: Главная / Поиск: {запрос}.
+Breadcrumbs::for('search.index', function ($trail) {
+    $trail->parent('home');
+    $trail->push('Поиск: ' . request('q'), route('search.index'));
 });
 
 // Карточка товара: Главная / ... / Категория / Товар.
